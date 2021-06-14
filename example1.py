@@ -34,7 +34,9 @@ plt.show()
 
 x_multiple = np.array(x_multiple).T
 #%% Computing the matrices X and Y
-Y_multiple = ps.differentiation.FiniteDifference()._differentiate(x_multiple, dt)
+Y_multiple = ps.differentiation.FiniteDifference()._differentiate(
+    x_multiple, dt
+)
 
 # Stack the data into one column
 Y_single = Y_multiple.reshape(-1, 1, order = 'F')
