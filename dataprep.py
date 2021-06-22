@@ -37,7 +37,7 @@ def bin_data(x, y, n_bins, width_type = 'variable'):
 
         for i in range(n_bins):
             mask = (x>=bin_edges[i]) & (x<=bin_edges[i+1])
-            n = sum(mask)
+            n = np.count_nonzero(mask)
             ws.append(n/total)
             xs.append((bin_edges[i]+bin_edges[i+1])/2) # centre of the bin
             if n != 0:
@@ -45,7 +45,7 @@ def bin_data(x, y, n_bins, width_type = 'variable'):
             else:
                 ys.append(0)
     elif width_type == 'variable':
-        x_sorted, y_sorted = x, y
+        x_sorted, y_sorted = np.copy(x), np.copy(y)
         y_sorted = y_sorted[x.argsort(axis = 0)].squeeze(1) # sorting xs in increasing
         x_sorted.sort(axis = 0)                             # order, ys accordingly
         x_split = np.array_split(x_sorted, n_bins)
@@ -104,12 +104,33 @@ def time_series(func, init_state, time_step, point_n, diffusion = 0):
 
     X = [init_state]
     for i in range(point_n):
-        X_next = X[-1] + func(X[-1])*time_step + \
-                 np.squeeze(np.dot(D, np.random.randn(D.shape[1],1)*np.sqrt(time_step)).T)
+        X_next = X[-1] + func(X[-1])*time_step \
+                 + np.squeeze(np.sqrt(2)*np.dot(D, np.random.randn(D.shape[1],1)*np.sqrt(time_step)).T)
         X.append(X_next)
     time_series = np.array(X)
     return time_series
 
+def add_noise(x, sigma = 1):
+    """ Simulates measurement noise on the time series data.
+    
+    Parameters
+    ----------
+    x : array
+        time series data
+    sigma : float, default 1
+        noise amplitude
+    
+    Returns
+    -------
+    x_noisy : array
+        noisy time series, where each entry of x has been offset by a normally
+        distrubuted random number of variance sigma**2
+    """
+    
+    x_noisy = x + np.random.randn(*x.shape)*sigma
+    
+    return x_noisy
+    
 
 def ts_plot3(data):
     """
