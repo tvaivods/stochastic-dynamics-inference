@@ -23,7 +23,7 @@ import time
 
 x_multiple = []
 dt = 5e-3
-n = int(1e5)
+n = int(1e4)
 n_traj = 5
 diffusion = 1
 x0s = np.full(n_traj, 2)
@@ -61,10 +61,24 @@ Y_multiple = ps.differentiation.FiniteDifference(order = 1)._differentiate(
 Y_single = Y_multiple.reshape(-1, 1, order = 'F')
 x_single = x_multiple.reshape(-1, 1, order = 'F')
 
-basis = ps.feature_library.polynomial_library.PolynomialLibrary(degree=15)
-basis.fit(x_single)
-X_single = basis.transform(x_single)
+#%%
 
+model = SSRSindy(x_single, Y_single)
+basis = ps.feature_library.polynomial_library.PolynomialLibrary(degree=10)
+model.fit_basis(basis)
+model.bin_data(90)
+model.evaluate()
+coeffs = np.copy(np.abs(model.coeffs.squeeze()))
+coeffs[~model.masks.squeeze()] = None
+for i in range(coeffs.shape[0]):
+    # coeffs[i,:] -= np.nanmin(coeffs[i,:])*.99
+    coeffs[i,:] /= np.nanmax(coeffs[i,:])
+coeffs = np.log10(coeffs)
+plt.imshow(coeffs, cmap = 'viridis')
+plt.colorbar()
+plt.show()
+
+plt.plot(np.arange(1,12,1), model.errors)
 #%% Bin the data and use it to infer the force
 x_binned, Y_binned, weights = bin_data(x_single, Y_single, 90,
                                        width_type = 'equal')
@@ -76,9 +90,9 @@ plt.scatter(x_binned.squeeze(), Y_binned.squeeze(), s = 40*(weights/np.max(weigh
             marker = 'o', facecolor = 'b', alpha = 0.3)
 plt.plot(x,y(x), 'k')
 
-mask = np.array([True, True, True, True, False, False,
-                 False, False, False, False, False]).reshape(-1,1)
-C, mask = SSR_step(np.matmul(W,X_binned), np.matmul(W,Y_binned), mask)
+mask = np.array([True, True, True, True, False]).reshape(-1,1)
+C, mask = SSR(np.matmul(W,X_binned), np.matmul(W,Y_binned), mask)
+# plt.scatter(x_single, Y_single, s = 0.2)
 print(C)
 
 y_pred = lambda x : C[0] + C[1]*x + C[2]*x**2 + C[3]*x**3 + C[4]*x**4
@@ -86,22 +100,10 @@ plt.plot(x, y_pred(x), 'r--')
 plt.show()
 
 #%%
-coeffs, masks, errors = SSR(np.matmul(W,X_binned), np.matmul(W,Y_binned))
-coeffs = np.abs(coeffs.squeeze())
-coeffs[~masks.squeeze()] = None
-# for i in range(coeffs.shape[0]):
-#     coeffs[i,:] -= np.nanmin(coeffs[i,:])*.99
-#     coeffs[i,:] /= np.nanmax(coeffs[i,:])
-coeffs = np.log10(coeffs)
-plt.imshow(coeffs, cmap = 'viridis')
-plt.colorbar()
-plt.show()
-
-plt.plot(np.arange(1,X_binned.shape[1]+1,1), errors, '-o')
-
-#%%
-errors = CV_score(np.matmul(W,X_binned), np.matmul(W,Y_binned), K=5)
-plt.semilogy(np.arange(1, X_single.shape[1] * Y_single.shape[1] + 1, 1), errors, '-o')
+errors = CV_score(np.matmul(W,X_binned), np.matmul(W,Y_binned), K=20)
+plt.plot(np.arange(1, X_single.shape[1] * Y_single.shape[1] + 1, 1), errors, '-o')
+plt.yscale("log")
+# plt.ylim(0, np.max(errors)*1.1)
 plt.xticks(np.arange(1,X_single.shape[1]+1,1))
 plt.xlabel("Total number of nonzero terms")
 plt.ylabel("Cross-validation score $\delta$")
