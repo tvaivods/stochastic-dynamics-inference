@@ -150,5 +150,5 @@ def CV_SSR(X,Y,K=5):
             delta2[N-i-1] += np.linalg.norm(
                                 Y[test_idx]-np.matmul(X[test_idx],C),ord = 2)**2
             Cs.append(C != 0)
-    delta2 /= K
+    delta2 /= K*Y.shape[0]
     return delta2
