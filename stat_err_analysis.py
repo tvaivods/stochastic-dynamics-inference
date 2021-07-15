@@ -23,8 +23,8 @@ from tqdm import tqdm
 y = lambda x : 3 - 18*x  + 12*x**2 - 2*x**3
 
 exp_lo = 3          # Shortest trajectory of length 10^exp_lo
-exp_hi = 5          # Longest trajectory of length 10^exp_hi
-n_lengths = 10      # Number of different lengths in this range
+exp_hi = 4          # Longest trajectory of length 10^exp_hi
+n_lengths = 3      # Number of different lengths in this range
 n_strands = 10      # N. of samples per length of trajectory
 
 n_bins = 90         # Data bin number
@@ -107,7 +107,7 @@ print("Done! Data saved as " + "stat_analysis/trajdata"+suffix+".csv")
 #%% Visualising the CV scores
 
 # Reading the data and computing mean, std for strand groups
-error_list = np.loadtxt("stat_analysis/"+filename, delimiter = ',')
+error_list = np.loadtxt("stat_analysis/trajdata"+suffix+".csv", delimiter = ',')
 n_lengths = len(np.unique(error_list[:,0]))
 n_strands = error_list.shape[0]/n_lengths
 mean_list = []
