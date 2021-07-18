@@ -94,17 +94,44 @@ def SSR(X, Y):
     errors = np.flip(errors)
     return coeffs, masks, errors
             
+def opt_term_n(errors):
+    """
+    Estimates the optimal term number from an error array.
 
-def survival_matrix(X,Y):
-    N = Y.shape[1] * X.shape[1]
-    mask_matrix = np.ones([X.shape[1], X.shape[1]])
-    mask = None
-    for i in range(N-1):
-        _, mask = SSR(X, Y, mask)
-        mask_matrix[N-2-i,:] = mask.squeeze()
-    return mask_matrix
+    Parameters
+    ----------
+    errors : array
+        Array containing error values at positions i corresponding to the
+        non-zero term number opt_n=i+1.
+
+    Returns
+    -------
+    opt_n : int
+        Optimal number of terms opt_n.
+
+    """
+    error_ratios = errors[:-1]/errors[1:]
+    opt_n = np.argmax(error_ratios[:-1]/error_ratios[1:])+2
+    return opt_n
 
 def survival_to_order(masks):
+    """
+    Converts a survival matrix (i.e. an array of masks) into an array of
+    survival orders.
+
+    Parameters
+    ----------
+    masks : ndarray, dtype = bool
+        Array of masks representing the survival matrix.
+
+    Returns
+    -------
+    order : array
+        1D array with each entry representing the survival position of their
+        respective basis function. Survival position 1 corresponds to the
+        term that survives the longest.
+
+    """
     N = masks.shape[0]
     temp_masks = np.copy(masks)
     order = np.zeros(N)
@@ -113,12 +140,52 @@ def survival_to_order(masks):
         order[pos] = i+1
         temp_masks[:,pos] = False
     return order
-    
 
-def CV_score(X,Y,K=8):
-    """Computes the cross-validation score values for each step in the
-    SSR algorithm.
+def order_to_survival(order):
     """
+    Converts a survival order into a survival matrix.
+
+    Parameters
+    ----------
+    order : array
+        1D array with each entry representing the survival position of their
+        respective basis function. Survival position 1 corresponds to the
+        term that survives the longest.
+
+    Returns
+    -------
+    masks : ndarray, dtype = bool
+        Array of masks representing the survival matrix.
+
+    """
+    N = len(order)
+    masks = np.zeros([N,N], dtype = bool)
+    for i in range(N):  # for each function
+        survival_pos = order[i]
+        masks[survival_pos-1:,i] = True
+    return masks
+
+def CV_scores(X,Y,K=5):
+    """
+    Computes the cross-validation score values for each step in the
+    SSR algorithm.
+
+    Parameters
+    ----------
+    X : ndarray
+        Matrix X.
+    Y : ndarray
+        Matrix y.
+    K : int, optional
+        Cross-validation fold number. The default is 5.
+
+    Returns
+    -------
+    delta2 : array
+        Squares of the CV scores.
+
+    """
+    
     kf8 = KFold(n_splits = K, shuffle = True, random_state = np.random.randint(1000))
     idx = np.arange(0,Y.shape[0])
     N = Y.shape[1] * X.shape[1]
@@ -130,25 +197,5 @@ def CV_score(X,Y,K=8):
             C, mask = SSR_step(X[train_idx], Y[train_idx], mask)
             delta2[N-i-1] += np.linalg.norm(
                                 Y[test_idx]-np.matmul(X[test_idx],C),ord = 2)**2
-    delta2 /= K
-    return np.sqrt(delta2)
-
-def CV_SSR(X,Y,K=5):
-    """Computes the cross-validation score values for each step in the
-    SSR algorithm.
-    """
-    kf8 = KFold(n_splits = K, shuffle = True, random_state = np.random.randint(1000))
-    idx = np.arange(0,Y.shape[0])
-    N = Y.shape[1] * X.shape[1]
-    delta2 = np.zeros(N)
-    Cs = []
-    
-    for train_idx, test_idx in kf8.split(idx):
-        mask = None
-        for i in range(N):
-            C, mask = SSR_step(X[train_idx], Y[train_idx], mask)
-            delta2[N-i-1] += np.linalg.norm(
-                                Y[test_idx]-np.matmul(X[test_idx],C),ord = 2)**2
-            Cs.append(C != 0)
     delta2 /= K*Y.shape[0]
     return delta2

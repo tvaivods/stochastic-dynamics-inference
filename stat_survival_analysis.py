@@ -25,12 +25,13 @@ y = lambda x : 3 - 18*x  + 12*x**2 - 2*x**3
 exp_lo = 3          # Shortest trajectory of length 10^exp_lo
 exp_hi = 6          # Longest trajectory of length 10^exp_hi
 n_lengths = 10      # Number of different lengths in this range
-n_strands = 15      # N. of samples per length of trajectory
+n_strands = 20      # N. of samples per length of trajectory
 ns = np.int32(10**np.linspace(exp_lo,exp_hi,n_lengths))
 
 n_traj = 5          # Trajectories in a sample
 diffusion = 1       # Diffusion coefficient
 dt = 5e-3           # Timestep length
+n_bins = 90
 
 def mp_ts(x0):      # For multiprocessing of data generation
     np.random.seed()
@@ -152,7 +153,38 @@ for n in ns:
 mask_lists = np.array(mask_lists)
 order_lists = np.array(order_lists)
 
+#%% Saving the data
+suffix = f"_{exp_lo}-{exp_hi}({n_lengths}n{n_strands}s)"
+header = f"Parameters: n_bins={n_bins}, n_traj={n_traj}, \
+diffusion={diffusion}, dt={dt}"
+
+mask_table = np.zeros([n_lengths*n_strands, n_features+1])
+mask_table[:,1:] = mask_lists.reshape(-1,n_features)
+mask_table[:,0] = np.array([[n]*n_strands for n in ns]).reshape(1,-1)
+mask_table = mask_table.astype('int32')
+np.savetxt("stat_analysis/survmasks"+suffix+".csv", mask_table, delimiter = ',', header=header)
+
+order_table = np.zeros([n_lengths*n_strands, n_features+1])
+order_table[:,1:] = order_lists.reshape(-1,n_features)
+order_table[:,0] = np.array([[n]*n_strands for n in ns]).reshape(1,-1)
+order_table = order_table.astype('int32')
+np.savetxt("stat_analysis/survorders"+suffix+".csv", order_table, delimiter = ',', header=header)
+
+#%% Loading the data
+
+mask_table = np.loadtxt("stat_analysis/survmasks"+suffix+".csv", delimiter = ',')
+order_table = np.loadtxt("stat_analysis/survorders"+suffix+".csv", delimiter = ',')
+n_lengths = len(np.unique(mask_table[:,0]))
+n_strands = int(mask_table.shape[0]/n_lengths)
+n_features = mask_table.shape[1]-1
+ns = np.unique(mask_table[:,0])
+mask_lists = mask_table[:,1:].reshape(n_lengths, n_strands, -1)
+order_lists = order_table[:,1:].reshape(n_lengths, n_strands, -1)
+
+
 #%% Survival matrix plot
+order_list = order_lists[-1]
+
 order_mean = np.mean(order_list, axis = 0)
 order_std = np.std(order_list, axis = 0)
 
@@ -173,17 +205,36 @@ plt.xticks(np.arange(1,n_features+1,1))
 plt.yticks(np.arange(1,n_features+1,1))
 plt.xlabel("Basis function index")
 plt.ylabel("n")
+plt.title("Mean survival pattern")
 
 plt.errorbar(np.arange(1,n_features+1,1), order_mean, order_std, fmt = 'r.',
              markersize = 8, capsize = 4)
 
 plt.ylim([n_features+0.5,0.5])
 
+plt.savefig("stat_analysis/mean_survival.png", bbox_inches='tight')
+
+
+#%% Accurate function frequency
+
+accuracy_list = []
+for i in range(n_lengths):
+    n_accurate = np.count_nonzero((true_mask == mask_lists[i]).all(axis = 1))
+    accuracy_list.append(n_accurate)
+accuracy_list = np.array(accuracy_list)
+plt.scatter(ns, accuracy_list/n_strands)
+plt.xscale("log")
+plt.ylim([0, 1])
+plt.ylabel(f"Fraction of accurate optimal predictions")
+plt.xlabel("Trajectory length")
+plt.title("Accuracy of function choice in optimal solution")
+plt.grid()
+
 #%% Hamming distances
 
 fig = plt.figure(figsize = (7,4), dpi = 200)
 
-for i in range(len(ns)):
+for i in range(n_lengths):
     ham_dist = np.count_nonzero(mask_lists[i] != true_mask, axis = 1)
     avg_ham_dist = np.mean(ham_dist)
     std_ham_dist = np.std(ham_dist)
@@ -195,6 +246,8 @@ plt.xlabel("Trajectory length")
 plt.title("Hamming distance between true and optimal function patterns")
 plt.grid()
 
+plt.savefig("stat_analysis/hamming_term_n.png", bbox_inches='tight')
+
 #%% Jaccard distances
 
 fig = plt.figure(figsize = (7,4), dpi = 200)
@@ -203,7 +256,7 @@ for i in range(len(ns)):
     jac_coeff = np.count_nonzero(mask_lists[i] & true_mask, axis = 1)/\
         np.count_nonzero(mask_lists[i] | true_mask, axis = 1)
     avg_jac_dist = np.mean(1-jac_coeff)
-    std_jac_dist = np.std(jac_dist)
+    std_jac_dist = np.std(1-jac_coeff)
     plt.errorbar(ns[i], avg_jac_dist, std_jac_dist, fmt = 'k.', markersize = 8, capsize = 4)
 plt.xscale("log")
 plt.ylabel(f"Mean Jaccard distance (avg. over {n_strands} samples)")
@@ -211,12 +264,14 @@ plt.xlabel("Trajectory length")
 plt.title("Jaccard distance between true and optimal function patterns")
 plt.grid()
 
+plt.savefig("stat_analysis/jaccard_term_n.png", bbox_inches='tight')
+
 #%% Number of true and false functions in optimal solution
 
 fig = plt.figure(figsize = (7,4), dpi = 200)
 
 for i in range(len(ns)):
-    n_true = np.count_nonzero(mask_lists[i,:,0:3], axis = 1)
+    n_true = np.count_nonzero(mask_lists[i,:,0:4], axis = 1)
     n_false = np.count_nonzero(mask_lists[i,:,4:], axis = 1)
     n_terms = np.count_nonzero(mask_lists[i], axis = 1)
     
@@ -238,28 +293,7 @@ plt.grid()
 plt.axhline(y=4, color = 'grey', linestyle = '--')
 plt.axhline(y=0, color = 'grey', linestyle = '--')
 
-#%%
-
-fig = plt.figure(figsize = (7,4), dpi = 200)
-
-for i in range(len(ns)):
-    n_match = np.count_nonzero(mask_lists[i] & true_mask, axis = 1)
-    n_diff = np.count_nonzero(mask_lists[i] & ~true_mask, axis = 1)
-    
-    plt.errorbar(ns[i], np.mean(n_match), np.std(n_match), fmt = 'g.',
-                  alpha = 0.8, markersize = 8, capsize = 4)
-    plt.errorbar(ns[i], np.mean(n_diff), np.std(n_diff), fmt = 'r.',
-                  alpha = 0.8, markersize = 8, capsize = 4)
-plt.xscale("log")
-plt.ylim([0, 5])
-plt.ylabel(f"Mean number of functions (avg. over {n_strands} samples)")
-plt.xlabel("Trajectory length")
-plt.title("N. of matching/differing terms between the optimal and true solutions")
-plt.legend(["N. of matching functions",
-            "N. of differing functions"],)
-plt.grid()
-plt.axhline(y=4, color = 'grey', linestyle = '--')
-plt.axhline(y=0, color = 'grey', linestyle = '--')
+plt.savefig("stat_analysis/true_term_n.png", bbox_inches='tight')
 
 #%%
 
@@ -277,12 +311,15 @@ for i in range(len(ns)):
     
     ax[0].errorbar(np.mean(n_match), np.mean(n_miss), np.std(n_match), np.std(n_miss),
                  alpha = 0.8, markersize = 8, capsize = 4, color = colors[i])
+ax[0].grid()
 ax[0].scatter(4,0, color = 'k', s = 40)
 ax[0].set_ylabel("N. of incorrect functions")
 ax[0].set_xlabel("N. of correct functions")
 ax[0].set_title("Optimal solution function number")
-ax[0].grid()
+
 
 matplotlib.colorbar.ColorbarBase(ax = ax[1], cmap = cmap, norm = norm, orientation = "vertical")
 ax[1].invert_yaxis()
 ax[1].set_ylabel("Trajectory length")
+
+plt.savefig("stat_analysis/corr_v_incorr.png", bbox_inches='tight')

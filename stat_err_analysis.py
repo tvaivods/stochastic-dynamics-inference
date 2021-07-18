@@ -94,7 +94,7 @@ for n in pbar:                      # for each trajectory length
         W = np.diag(weights)
         
         # Running the SSR algorithm
-        errors = CV_SSR(np.matmul(W,X_binned), np.matmul(W,Y_binned), K = K)
+        errors = CV_scores(np.matmul(W,X_binned), np.matmul(W,Y_binned), K = K)
         error_list.append(np.concatenate([[n], errors]))
 
 error_list = np.array(error_list)
