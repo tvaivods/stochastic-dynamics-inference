@@ -16,161 +16,11 @@ from stochastic_sindy import *
 import multiprocessing as mp
 import time
 from tqdm import tqdm
-
-#%% Setting up parameters and prerequisites
-
-# Force function
-y = lambda x : 3 - 18*x  + 12*x**2 - 2*x**3
-
-exp_lo = 3          # Shortest trajectory of length 10^exp_lo
-exp_hi = 6          # Longest trajectory of length 10^exp_hi
-n_lengths = 10      # Number of different lengths in this range
-n_strands = 20      # N. of samples per length of trajectory
-ns = np.int32(10**np.linspace(exp_lo,exp_hi,n_lengths))
-
-n_traj = 5          # Trajectories in a sample
-diffusion = 1       # Diffusion coefficient
-dt = 5e-3           # Timestep length
-n_bins = 90
-
-def mp_ts(x0):      # For multiprocessing of data generation
-    np.random.seed()
-    return time_series(y,x0,dt,n,diffusion)
-
-#%% Specifying the basis functions
-# basis1 = ps.feature_library.polynomial_library.PolynomialLibrary(degree=7)
-# basis2 = ps.feature_library.fourier_library.FourierLibrary(n_frequencies=6)
-# basis = basis1 + basis2
-basis1_fns = [
-    lambda x : 1,
-    lambda x : x,
-    lambda x : x**2,
-    lambda x : x**3,
-    lambda x : x**4,
-    lambda x : x**5,
-    lambda x : x**6,
-    lambda x : x**7,
-    lambda x : x**8,
-    lambda x : x**9,
-    lambda x : x**10,
-    lambda x : np.sin(x),
-    lambda x : np.cos(x),
-    lambda x : np.sin(6*x),
-    lambda x : np.cos(6*x),
-    lambda x : np.sin(11*x),
-    lambda x : np.cos(11*x),
-    lambda x : np.tanh(10*x),
-    lambda x : -10*np.tanh(10*x)**2 + 10*np.exp(-50*x**2)
-]
-basis1_names = [
-    lambda x : '1',
-    lambda x : x,
-    lambda x : x+'^2',
-    lambda x : x+'^3',
-    lambda x : x+'^4',
-    lambda x : x+'^5',
-    lambda x : x+'^6',
-    lambda x : x+'^7',
-    lambda x : x+'^8',
-    lambda x : x+'^9',
-    lambda x : x+'^10',
-    lambda x : 'sin('+x+')',
-    lambda x : 'cos('+x+')',
-    lambda x : 'sin(6*'+x+')',
-    lambda x : 'cos(6*'+x+')',
-    lambda x : 'sin(11*'+x+')',
-    lambda x : 'cos(11*'+x+')',
-    lambda x : 'tanh(10*'+x+')',
-    lambda x : '-10 tanh(10*'+x+'$)^2$ + 10 exp(-50*'+x+'$**2$)'
-]
-
-basis = ps.CustomLibrary(
-    library_functions=basis1_fns, function_names=basis1_names
-)
-n_features = 19
-
-# Defining the true mask
-true_mask = np.zeros(n_features, dtype = bool)
-true_mask[0:4] = True
-
-#%% Compute an array of optimal masks and orders
-
-mask_lists = []
-order_lists = []
-
-for n in ns:
-
-    mask_list = []
-    order_list = []
-    
-    print(f"n = {n}")
-    
-    pbar = tqdm(range(n_strands), leave = True)
-    
-    for i in pbar:
-        pbar.set_postfix_str(f'Computing strand {i+1}/{n_strands}')
-        
-        # Generating the data
-        x_multiple = []
-        x0s = np.full(n_traj, 2)
-        pool = mp.Pool()
-        x_multiple = pool.map(mp_ts, x0s)
-        pool.close()
-        pool.join()
-        
-        x_multiple = np.array(x_multiple).T
-        
-        # Computing the matrices
-        Y_multiple = ps.differentiation.FiniteDifference(order = 1)._differentiate(
-            x_multiple, dt
-        )
-        Y_single = Y_multiple.reshape(-1, 1, order = 'F')
-        x_single = x_multiple.reshape(-1, 1, order = 'F')
-        
-        # Computing the binned matrices
-        x_binned, Y_binned, weights = bin_data(x_single, Y_single, n_bins,
-                                           width_type = 'equal')
-        basis.fit(x_binned)
-        X_binned = basis.transform(x_binned)
-        W = np.diag(weights)
-        
-        # Running the SSR algorithm
-        _, masks, errors = SSR(np.matmul(W,X_binned), np.matmul(W,Y_binned))
-        
-        opt_n = opt_term_n(errors)
-        opt_mask = masks.squeeze()[opt_n-1]
-        mask_list.append(opt_mask)
-        
-        order = survival_to_order(masks)
-        order_list.append(order)
-    
-    mask_list = np.array(mask_list)
-    order_list = np.array(order_list)
-    
-    mask_lists.append(mask_list)
-    order_lists.append(order_list)
-
-mask_lists = np.array(mask_lists)
-order_lists = np.array(order_lists)
-
-#%% Saving the data
-suffix = f"_{exp_lo}-{exp_hi}({n_lengths}n{n_strands}s)"
-header = f"Parameters: n_bins={n_bins}, n_traj={n_traj}, \
-diffusion={diffusion}, dt={dt}"
-
-mask_table = np.zeros([n_lengths*n_strands, n_features+1])
-mask_table[:,1:] = mask_lists.reshape(-1,n_features)
-mask_table[:,0] = np.array([[n]*n_strands for n in ns]).reshape(1,-1)
-mask_table = mask_table.astype('int32')
-np.savetxt("stat_analysis/survmasks"+suffix+".csv", mask_table, delimiter = ',', header=header)
-
-order_table = np.zeros([n_lengths*n_strands, n_features+1])
-order_table[:,1:] = order_lists.reshape(-1,n_features)
-order_table[:,0] = np.array([[n]*n_strands for n in ns]).reshape(1,-1)
-order_table = order_table.astype('int32')
-np.savetxt("stat_analysis/survorders"+suffix+".csv", order_table, delimiter = ',', header=header)
+from bases import *
 
 #%% Loading the data
+
+suffix = f"_3-5(3n10s)D1.000-standard"
 
 mask_table = np.loadtxt("stat_analysis/survmasks"+suffix+".csv", delimiter = ',')
 order_table = np.loadtxt("stat_analysis/survorders"+suffix+".csv", delimiter = ',')
@@ -179,11 +29,18 @@ n_strands = int(mask_table.shape[0]/n_lengths)
 n_features = mask_table.shape[1]-1
 ns = np.unique(mask_table[:,0])
 mask_lists = mask_table[:,1:].reshape(n_lengths, n_strands, -1)
+mask_lists = mask_lists.astype("bool")
 order_lists = order_table[:,1:].reshape(n_lengths, n_strands, -1)
 
+# True mask
+true_mask = np.zeros(n_features, dtype = bool)
+true_mask[0:4] = True
 
 #%% Survival matrix plot
-order_list = order_lists[-1]
+ns_idx = -1
+opt_n = np.count_nonzero(true_mask)
+
+order_list = order_lists[ns_idx]    # for the longest trajectories
 
 order_mean = np.mean(order_list, axis = 0)
 order_std = np.std(order_list, axis = 0)
@@ -205,14 +62,14 @@ plt.xticks(np.arange(1,n_features+1,1))
 plt.yticks(np.arange(1,n_features+1,1))
 plt.xlabel("Basis function index")
 plt.ylabel("n")
-plt.title("Mean survival pattern")
+plt.title(f"Mean survival pattern for trajectory of length {int(ns[ns_idx]):.1e}")
 
 plt.errorbar(np.arange(1,n_features+1,1), order_mean, order_std, fmt = 'r.',
              markersize = 8, capsize = 4)
 
 plt.ylim([n_features+0.5,0.5])
 
-plt.savefig("stat_analysis/mean_survival.png", bbox_inches='tight')
+plt.savefig(f"stat_analysis/mean_survival.png", bbox_inches='tight')
 
 
 #%% Accurate function frequency
@@ -222,6 +79,9 @@ for i in range(n_lengths):
     n_accurate = np.count_nonzero((true_mask == mask_lists[i]).all(axis = 1))
     accuracy_list.append(n_accurate)
 accuracy_list = np.array(accuracy_list)
+
+fig = plt.figure(figsize = (8,4), dpi = 200)
+
 plt.scatter(ns, accuracy_list/n_strands)
 plt.xscale("log")
 plt.ylim([0, 1])
@@ -229,6 +89,8 @@ plt.ylabel(f"Fraction of accurate optimal predictions")
 plt.xlabel("Trajectory length")
 plt.title("Accuracy of function choice in optimal solution")
 plt.grid()
+
+# plt.savefig(f"stat_analysis/true_fraction.png", bbox_inches='tight')
 
 #%% Hamming distances
 
@@ -263,6 +125,7 @@ plt.ylabel(f"Mean Jaccard distance (avg. over {n_strands} samples)")
 plt.xlabel("Trajectory length")
 plt.title("Jaccard distance between true and optimal function patterns")
 plt.grid()
+plt.ylim([0,1])
 
 plt.savefig("stat_analysis/jaccard_term_n.png", bbox_inches='tight')
 
@@ -300,7 +163,7 @@ plt.savefig("stat_analysis/true_term_n.png", bbox_inches='tight')
 fig, ax = plt.subplots(1,2,figsize = (6,5),
                        gridspec_kw={'width_ratios': [20, 1]}, dpi=200)
 
-cmap = pl.cm.winter
+cmap = pl.cm.jet
 norm = matplotlib.colors.LogNorm(vmin=ns[0],
                                  vmax=ns[-1])
 colors = cmap(norm(ns))
