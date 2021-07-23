@@ -61,12 +61,12 @@ boninsegna1_basis = ps.CustomLibrary(
 )
 boninsegna1_n_features = 19
 
-#%%
+#%% Standard basis
 
 standard_name = "standard"
 
 standard_fns = [
-    lambda x : 1,
+    lambda x : 1, #1
     lambda x : x,
     lambda x : x**2,
     lambda x : x**3,
@@ -77,17 +77,71 @@ standard_fns = [
     lambda x : x**8,
     lambda x : np.sin(x),
     lambda x : np.cos(x),
-    lambda x : np.sin(x/2),
+    lambda x : np.sin(3*x),
+    lambda x : np.cos(3*x),
+    lambda x : np.sin(7*x),
+    lambda x : np.cos(7*x),
+    lambda x : np.exp(-2*(x-1)**2),
+    lambda x : np.exp(-2*(x-3)**2),
+    lambda x : np.log(x**2+0.01),
+    lambda x : np.tanh(x-.19),
+    lambda x : np.tanh(x-1)
+]
+standard_names = [
+    lambda x : '1',
+    lambda x : x,
+    lambda x : x+'^2',
+    lambda x : x+'^3',
+    lambda x : x+'^4',
+    lambda x : x+'^5',
+    lambda x : x+'^6',
+    lambda x : x+'^7',
+    lambda x : x+'^8',
+    lambda x : 'sin('+x+')',
+    lambda x : 'cos('+x+')',
+    lambda x : 'sin(3*'+x+')',
+    lambda x : 'cos(3*'+x+')',
+    lambda x : 'sin(7*'+x+')',
+    lambda x : 'cos(7*'+x+')',
+    lambda x : 'exp(-2*('+x+'-1)^2)',
+    lambda x : 'exp(-2*('+x+'-3)^2)',
+    lambda x : 'ln('+x+'^2+0.01)',
+    lambda x : 'tanh('+x+'-0.19)',
+    lambda x : 'tanh('+x+'-1)'
+]
+
+standard_basis = ps.CustomLibrary(
+    library_functions=standard_fns, function_names=standard_names
+)
+standard_n_features = 20
+
+#%% Standardx basis, ill performance
+
+standardx_name = "standardx"
+
+standardx_fns = [
+    lambda x : 1, #1
+    lambda x : x,
+    lambda x : x**2,
+    lambda x : x**3,
+    lambda x : x**4,
+    lambda x : x**5,
+    lambda x : x**6,
+    lambda x : x**7,
+    lambda x : x**8,
+    lambda x : np.sin(x), #10
+    lambda x : np.cos(x),
+    lambda x : np.sin(x/2), #12
     lambda x : np.cos(x/2),
     lambda x : np.sin(2*x),
     lambda x : np.cos(2*x),
     lambda x : np.exp(-2*(x-1)**2),
     lambda x : np.exp(-2*(x-3)**2),
-    lambda x : np.sinh(x),
-    lambda x : np.cosh(x),
+    lambda x : np.sinh(x), #18
+    lambda x : np.cosh(x), #19
     lambda x : np.tanh(x-2)
 ]
-standard_names = [
+standardx_names = [
     lambda x : '1',
     lambda x : x,
     lambda x : x+'^2',
@@ -107,10 +161,10 @@ standard_names = [
     lambda x : 'exp(-2*('+x+'-3)^2)',
     lambda x : 'sinh('+x+')',
     lambda x : 'cosh('+x+')',
-    lambda x : 'tanh('+x+')'
+    lambda x : 'tanh('+x+'-2)'
 ]
 
-standard_basis = ps.CustomLibrary(
-    library_functions=standard_fns, function_names=standard_names
+standardx_basis = ps.CustomLibrary(
+    library_functions=standardx_fns, function_names=standardx_names
 )
-standard_n_features = 20
+standardx_n_features = 20
