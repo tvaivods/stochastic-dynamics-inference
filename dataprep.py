@@ -103,7 +103,7 @@ def time_series(func, init_state, time_step, point_n, diffusion = 0):
                 match init_state and the output of func.")
 
     X = [init_state]
-    for i in range(point_n):
+    for i in range(int(point_n)):
         X_next = X[-1] + func(X[-1])*time_step \
                  + np.squeeze(np.sqrt(2)*np.dot(D, np.random.randn(D.shape[1],1)*np.sqrt(time_step)).T)
         X.append(X_next)
