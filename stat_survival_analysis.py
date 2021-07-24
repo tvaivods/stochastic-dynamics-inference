@@ -20,10 +20,12 @@ from bases import *
 
 #%% Loading the data
 
-suffix = f"_3-5(3n10s)D1.000-standard"
+suffix = f"_3-7(9n20s)"
 
 mask_table = np.loadtxt("stat_analysis/survmasks"+suffix+".csv", delimiter = ',')
+# mask_table = np.reshape(mask_table, (1,-1))
 order_table = np.loadtxt("stat_analysis/survorders"+suffix+".csv", delimiter = ',')
+# order_table = np.reshape(order_table, (1,-1))
 n_lengths = len(np.unique(mask_table[:,0]))
 n_strands = int(mask_table.shape[0]/n_lengths)
 n_features = mask_table.shape[1]-1
@@ -70,6 +72,30 @@ plt.errorbar(np.arange(1,n_features+1,1), order_mean, order_std, fmt = 'r.',
 plt.ylim([n_features+0.5,0.5])
 
 plt.savefig(f"stat_analysis/mean_survival.png", bbox_inches='tight')
+
+#%%
+
+ns_idx = -1
+
+order_list = order_lists[ns_idx]
+
+masks = []
+for i in range(order_list.shape[0]):
+    masks.append(order_to_survival(order_list[i]))
+masks = np.array(masks)
+
+surv_hist = masks.sum(axis = 0)
+plt.imshow(surv_hist, cmap = 'Blues')
+
+surv_hist = np.zeros((n_features,n_features))
+
+for order in order_list:
+    surv_hist[order.astype('int')-1, np.arange(0,n_features,1)] += 1
+
+plt.imshow(surv_hist, cmap = 'Blues')
+plt.xticks(np.arange(0,19,1))
+plt.yticks(np.arange(0,19,1))
+plt.grid(alpha = 0.3)
 
 
 #%% Accurate function frequency

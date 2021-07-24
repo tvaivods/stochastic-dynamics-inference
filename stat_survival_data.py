@@ -21,10 +21,10 @@ from bases import *
 
 y = lambda x : 3 - 18*x  + 12*x**2 - 2*x**3
 
-exp_lo = 3          # Shortest trajectory of length 10^exp_lo
-exp_hi = 5          # Longest trajectory of length 10^exp_hi
-n_lengths = 3      # Number of different lengths in this range
-n_strands = 10      # N. of samples per length of trajectory
+exp_lo = 6          # Shortest trajectory of length 10^exp_lo
+exp_hi = 6          # Longest trajectory of length 10^exp_hi
+n_lengths = 1      # Number of different lengths in this range
+n_strands = 4      # N. of samples per length of trajectory
 
 n_traj = 5          # Trajectories in a sample
 diffusion = 1       # Diffusion coefficient
@@ -35,7 +35,7 @@ basis = standard_basis
 n_features = standard_n_features
 basis_name = standard_name
 
-def mp_ts(x0, n):      # For multiprocessing of data generation
+def mp_ts(x0, n, diffusion):      # For multiprocessing of data generation
     np.random.seed()
     return time_series(y,x0,dt,n,diffusion)
 
@@ -72,8 +72,9 @@ def gen_stat_survival_data(y, exp_lo, exp_hi, n_lengths, n_strands, n_traj,
             x_multiple = []
             x0s = np.full(n_traj, 2)
             traj_lengths = np.full(n_traj, n)
+            diffusions = np.full(n_traj, diffusion)
             pool = mp.Pool()
-            mp_arg = np.transpose([x0s, traj_lengths])
+            mp_arg = np.transpose([x0s, traj_lengths, diffusions])
             x_multiple = pool.starmap(mp_ts, mp_arg)
             pool.close()
             pool.join()

@@ -19,7 +19,7 @@ from tqdm import tqdm
 
 #%% Loading the data
 
-suffix = '_3-5(3n10s)D1.000-standard'
+suffix = '_3-5(3n20s)D0.500-standard'
 error_list = np.loadtxt("stat_analysis/errdata"+suffix+".csv", delimiter = ',')
 n_lengths = len(np.unique(error_list[:,0]))
 n_strands = error_list.shape[0]/n_lengths
@@ -76,7 +76,7 @@ import sklearn as sk
 
 fig = plt.figure(figsize=(8, 4), dpi=200)
 
-n_terms_list = [4]
+n_terms_list = [3,4,5]
 
 reg = sk.linear_model.LinearRegression(fit_intercept = True)
 reg.fit(np.log(ns.reshape(-1,1)), np.log(mean_list))
