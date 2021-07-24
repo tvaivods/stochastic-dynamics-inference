@@ -35,7 +35,7 @@ basis = standard_basis
 n_features = standard_n_features
 basis_name = standard_name
 
-def mp_ts(x0, n):      # For multiprocessing of data generation
+def mp_ts(x0, n, diffusion):      # For multiprocessing of data generation
     np.random.seed()
     return time_series(y,x0,dt,n,diffusion)
 
@@ -66,8 +66,9 @@ def gen_stat_err_data(y, exp_lo, exp_hi, n_lengths, n_strands, n_traj, K,
             x_multiple = []
             x0s = np.full(n_traj, 2)
             traj_lengths = np.full(n_traj, n)
+            diffusions = np.full(n_traj, diffusion)
             pool = mp.Pool()
-            mp_arg = np.transpose([x0s, traj_lengths])
+            mp_arg = np.transpose([x0s, traj_lengths, diffusions])
             x_multiple = pool.starmap(mp_ts, mp_arg)
             pool.close()
             pool.join()
