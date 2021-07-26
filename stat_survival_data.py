@@ -21,12 +21,13 @@ from bases import *
 
 y = lambda x : 3 - 18*x  + 12*x**2 - 2*x**3
 
-exp_lo = 6          # Shortest trajectory of length 10^exp_lo
-exp_hi = 6          # Longest trajectory of length 10^exp_hi
-n_lengths = 1      # Number of different lengths in this range
-n_strands = 4      # N. of samples per length of trajectory
+exp_lo = 3          # Shortest trajectory of length 10^exp_lo
+exp_hi = 7          # Longest trajectory of length 10^exp_hi
+n_lengths = 9      # Number of different lengths in this range
+n_strands = 20      # N. of samples per length of trajectory
 
 n_traj = 5          # Trajectories in a sample
+x0s = np.linspace(-0.606,4.27,n_traj)
 diffusion = 1       # Diffusion coefficient
 dt = 5e-3           # Timestep length
 n_bins = 90
@@ -39,12 +40,13 @@ def mp_ts(x0, n, diffusion):      # For multiprocessing of data generation
     np.random.seed()
     return time_series(y,x0,dt,n,diffusion)
 
-def gen_stat_survival_data(y, exp_lo, exp_hi, n_lengths, n_strands, n_traj,
+def gen_stat_survival_data(y, exp_lo, exp_hi, n_lengths, n_strands, n_traj, x0s,
                            diffusion, dt, n_bins, basis, n_features, basis_name):
     
     suffix = f"_{exp_lo}-{exp_hi}({n_lengths}n{n_strands}s)D{diffusion:.3f}-{basis_name}"
     header = f"Parameters: n_bins={n_bins}, n_traj={n_traj},"\
-             + f" diffusion={diffusion}, dt={dt}, basis: {basis_name}"
+             + f" diffusion={diffusion}, dt={dt}, basis: {basis_name}"\
+             + f"initial positions: {x0s}"
     
     print(f"Generating statistical survival data for {n_lengths} trajectory lengths between "
           + f"{10**exp_lo} and {10**exp_hi}, with {n_strands} strands per trajectory length. "
