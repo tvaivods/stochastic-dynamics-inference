@@ -29,6 +29,7 @@ n_traj = 5          # Trajectories in a sample
 x0s = np.linspace(-0.606,4.27,n_traj)
 K = 5               # Number of CV folds
 diffusion = 1       # Diffusion coefficient
+noise = 0           # Measurement noise coefficient
 dt = 5e-3           # Timestep length
 n_bins = 90
 
@@ -41,7 +42,8 @@ def mp_ts(x0, n, diffusion):      # For multiprocessing of data generation
     return time_series(y,x0,dt,n,diffusion)
 
 def gen_stat_err_data(y, exp_lo, exp_hi, n_lengths, n_strands, n_traj, x0s, K,
-                           diffusion, dt, n_bins, basis, n_features, basis_name):
+                           diffusion, noise, dt, n_bins, basis, n_features,
+                           basis_name):
     
     suffix = f"_{exp_lo}-{exp_hi}({n_lengths}n{n_strands}s)D{diffusion:.3f}-{basis_name}"
     header = f"Parameters: n_bins={n_bins}, n_traj={n_traj},"\
@@ -108,5 +110,5 @@ def gen_stat_err_data(y, exp_lo, exp_hi, n_lengths, n_strands, n_traj, x0s, K,
     return suffix
 
 if __name__ == '__main__':
-    gen_stat_err_data(y, exp_lo, exp_hi, n_lengths, n_strands, n_traj, K,
-                        diffusion, dt, n_bins, basis, n_features, basis_name)
+    gen_stat_err_data(y, exp_lo, exp_hi, n_lengths, n_strands, n_traj, x0s, K,
+                        diffusion, noise, dt, n_bins, basis, n_features, basis_name)
