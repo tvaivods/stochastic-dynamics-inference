@@ -17,6 +17,11 @@ import pandas as pd
 from scipy.optimize import curve_fit
 import matplotlib.patches as patches
 
+plt.rcParams.update({
+    "text.usetex": True,
+    "font.family": "sans-serif",
+    "font.sans-serif": ["Helvetica"]})
+
 #%%
 ledger = pd.read_csv("stat_analysis/noise_ledger.csv",
                      skipinitialspace=True)
@@ -69,14 +74,15 @@ for i in range(len(ledger)):
         p = accuracy_lists.ravel()
         
         def sigmoid(x, a, b, c):
-            return a/(1+np.exp(-b*(x-c)))
+            return a/(1+np.exp(b*(x-c)))
         
-        popt, pcov = curve_fit(sigmoid, Ns, p)
+        popt, pcov = curve_fit(sigmoid, Ns, p, p0 = [0,40,0.3])
         
         ledger.at[i,"trans_pos"] = popt[2]
         ledger.at[i,"trans_rate"] = popt[1]
         ledger.at[i, "p_init"] = popt[0]
 
+ledger = ledger.sort_values("diffusion")
 ledger.to_csv("stat_analysis/noise_ledger.csv", index=False)
 
 #%% Transition values
@@ -99,12 +105,26 @@ plt.semilogy(ledger["diffusion"], abs(ledger["trans_rate"]), 'k.')
 # plt.ylim([0, abs(ledger["trans_rate"]).max()])
 plt.xlim([0,ledger["diffusion"].max()+1])
 plt.xlabel("Diffusion coefficient, $D$")
-plt.ylabel(r"Transition rate")
+plt.ylabel(r"Transition rate, $r$")
 plt.title("Transition rates for function choice accuracy")
 plt.grid()
 
+
+#%% Transition widths
+
+fig = plt.figure(figsize = (6,3), dpi = 200)
+
+widths = 2/ledger["trans_rate"]*np.log(0.99/(-0.99+1))
+
+plt.plot(ledger["diffusion"], widths, 'k.')
+plt.xlim([0,ledger["diffusion"].max()+1])
+plt.xlabel("Diffusion coefficient, $D$")
+plt.ylabel(r"Transition width, $w$")
+plt.title("Transition widths for function choice accuracy")
+plt.grid()
+
 #%%
-D = 4
+D = 9
 idx = ledger.index[ledger["diffusion"]==D][0]
 basis_name = "standard"
 
@@ -153,9 +173,9 @@ accuracy_lists = np.array(accuracy_lists)/n_strands
 p = accuracy_lists.ravel()
 
 def sigmoid(x, a, b, c):
-    return a/(1+np.exp(-b*(x-c)))
+    return a/(1+np.exp(b*(x-c)))
 
-popt, pcov = curve_fit(sigmoid, Ns, p)
+popt, pcov = curve_fit(sigmoid, Ns, p, p0 = [0,40,0.3])
 
 acc_var = np.sqrt(p*(1-p)/n_strands)
 
@@ -168,14 +188,19 @@ for i in range(n_Ns):
     plt.plot(Ns[i], accuracy_lists[i].reshape(1,-1), c='k',
              marker = '.', markersize=10)
 plt.ylim([-0.05, 1.05])
-plt.text(Ns[0], 0.1, f"Transition value: {popt[2]:.3f}\nTransition rate:\
-{popt[1]:.3f}")
+
 plt.ylabel("Fraction of accurate optimal predictions")
 plt.xlabel("Measurement noise coefficient $\sigma$")
 plt.title(f"Sigmoid fit of accuracy frequency, D={D}")
-plt.grid()
 
-plt.axvline(popt[2], c = 'crimson', linestyle = '-')
+plt.scatter(popt[2], -.05, c = 'crimson', linestyle = '-', clip_on=False, marker = 10,
+            s=60)
+w = widths[ledger["diffusion"] == D]
+plt.plot(np.linspace(popt[2]-w/2, popt[2]+w/2, 2), [-0.05, -0.05], linewidth=4,
+         c = 'crimson', clip_on = False, marker = 2, markersize = 6)
+plt.text(Ns[0], 0.1, "$\hat{\sigma}=$"+f" ${popt[2]:.3f}$"+"\n$r=$"
++f" ${popt[1]:.3f}$"+"\n$w=$"+f" ${float(w):.3f}$")
+plt.grid()
 
 #%% Sigmoid comparison
 
@@ -183,10 +208,78 @@ fig = plt.figure(figsize = (8,4), dpi = 200)
 
 cmap = pl.cm.jet
 
-x = np.linspace(0, ledger["s_hi"].max(), 200)
+x = np.linspace(0, ledger["s_hi"].max()+0.05, 300)
 for i in range(len(ledger)):
     a = ledger.at[i,"p_init"]
     b = ledger.at[i,"trans_rate"]
     c = ledger.at[i,"trans_pos"]
     plt.plot(x, sigmoid(x, a,b,c), c=cmap(ledger.at[i, "diffusion"]/ledger["diffusion"].max()))
 plt.legend([f"D={D}" for D in ledger["diffusion"]])
+
+#%% Fit the transition values
+
+def f(x, a, b, c, d):
+    return a*np.power(d*(x-b),c)
+
+popt, pcov = curve_fit(f, ledger["diffusion"], ledger["trans_pos"],
+                       [0.5,0.5,0.5,0.5])
+
+plt.plot(ledger["diffusion"], ledger["trans_pos"], 'k.')
+x = np.linspace(popt[0], ledger["diffusion"].max()+2, 100)
+plt.plot(x, f(x,*popt))
+plt.xlim([0,ledger["diffusion"].max()+2])
+plt.grid()
+
+#%% Full curve
+
+Ns = np.concatenate(
+    (np.linspace(0,0.226,12), np.linspace(0.24,0.44,17))
+)
+
+D = 14
+basis_name = "standard"
+
+suffix = f"_6-6(1n{int(n_strands)}s)D{D:.3f}"
+n_Ns  = len(Ns)
+
+error_tables = []
+mask_tables = []
+order_tables = []
+
+for N in Ns:
+    error_table = np.loadtxt("stat_analysis/errdata"+suffix+f"N{N:.3f}-"
+                        +basis_name+".csv", delimiter = ',')
+    error_tables.append(error_table)
+    mask_table = np.loadtxt("stat_analysis/survmasks"+suffix+f"N{N:.3f}-"
+                        +basis_name+".csv", delimiter = ',')
+    mask_tables.append(mask_table)
+    order_table = np.loadtxt("stat_analysis/survorders"+suffix+f"N{N:.3f}-"
+                        +basis_name+".csv", delimiter = ',')
+    order_tables.append(order_table)
+
+error_tables = np.array(error_tables)[:,:,1:]
+mask_tables = np.array(mask_tables)[:,:,1:].astype("bool")
+order_tables = np.array(order_tables)[:,:,1:].astype("int")
+ns = np.unique(mask_table[:,0])
+
+n_lengths = len(np.unique(mask_table[:,0]))
+n_strands = int(mask_table.shape[0]/n_lengths)
+n_features = mask_table.shape[1]-1
+
+true_mask = np.zeros(n_features, dtype = bool)
+true_mask[0:4] = True
+
+accuracy_lists = []
+for i_N in range(n_Ns):
+    accuracy_list = []
+    n_accurate = np.count_nonzero((true_mask == mask_tables[i_N]).all(axis = 1))
+    accuracy_list.append(n_accurate)
+    accuracy_lists.append(accuracy_list)
+accuracy_lists = np.array(accuracy_lists)/n_strands
+
+plt.scatter(Ns, accuracy_lists)
+
+xs = np.linspace(0,0.46,100)
+ys = sigmoid(xs, ledger.loc[13]["p_init"],
+             ledger.loc[13]["trans_rate"], ledger.loc[13]["trans_pos"])
+plt.plot(xs, ys)
