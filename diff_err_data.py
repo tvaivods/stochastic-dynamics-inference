@@ -19,6 +19,7 @@ n_strands = 20      # N. of samples per length of trajectory
 n_traj = 5          # Trajectories in a sample
 x0s = np.linspace(-0.606,4.27,n_traj)
 K = 5
+noise = 0           # Measurement noise coefficient
 dt = 5e-3           # Timestep length
 n_bins = 90
 
@@ -35,4 +36,4 @@ for diffusion in Ds:
     print(colored(f"#########  Generating data for D = {diffusion}.  #########",
                   "blue", "on_white")+"\n")
     gen_stat_err_data(y, exp_lo, exp_hi, n_lengths, n_strands, n_traj, x0s, K,
-                      diffusion, dt, n_bins, basis, n_features, basis_name)
+                      diffusion, noise, dt, n_bins, basis, n_features, basis_name)

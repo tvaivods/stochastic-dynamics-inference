@@ -94,7 +94,7 @@ def SSR(X, Y):
     errors = np.flip(errors)
     return coeffs, masks, errors
             
-def opt_term_n(errors):
+def opt_term_n(errors, method = "ratio"):
     """
     Estimates the optimal term number from an error array.
 
@@ -110,8 +110,22 @@ def opt_term_n(errors):
         Optimal number of terms opt_n.
 
     """
-    error_ratios = errors[:-1]/errors[1:]
-    opt_n = np.argmax(error_ratios[:-1]/error_ratios[1:])+2
+
+    if method == "ratio":
+        errs = errors
+        error_ratios = errs[:-1]/errs[1:]
+        opt_n = np.argmax(error_ratios[:-1]/error_ratios[1:])+2
+    elif method == "laplacian":
+        errors = np.log(errors)
+        opt_n = 3 + np.argmax(
+            -errors[4:]/12 + 4/3*errors[3:-1] - 5/2*errors[2:-2]
+            + 4/3*errors[1:-3] - errors[:-4]/12)
+    elif method == "edge":
+        opt_n = 3 + np.argmax(np.sqrt(errors[:-4]*errors[1:-3])/
+                              errors[3:-1]/errors[4:])
+    else:
+        print("Invalid optimality identification method!")
+
     return opt_n
 
 def survival_to_order(masks):
@@ -161,7 +175,7 @@ def order_to_survival(order):
     N = len(order)
     masks = np.zeros([N,N], dtype = bool)
     for i in range(N):  # for each function
-        survival_pos = order[i]
+        survival_pos = int(order[i])
         masks[survival_pos-1:,i] = True
     return masks
 
@@ -186,12 +200,12 @@ def CV_scores(X,Y,K=5):
 
     """
     
-    kf8 = KFold(n_splits = K, shuffle = True, random_state = np.random.randint(1000))
+    kf = KFold(n_splits = K, shuffle = True, random_state = np.random.randint(1000))
     idx = np.arange(0,Y.shape[0])
     N = Y.shape[1] * X.shape[1]
     delta2 = np.zeros(N)
     
-    for train_idx, test_idx in kf8.split(idx):
+    for train_idx, test_idx in kf.split(idx):
         mask = None
         for i in range(N):
             C, mask = SSR_step(X[train_idx], Y[train_idx], mask)

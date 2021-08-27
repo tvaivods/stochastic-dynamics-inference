@@ -16,6 +16,7 @@ n_strands = 20      # N. of samples per length of trajectory
 
 n_traj = 5          # Trajectories in a sample
 x0s = np.linspace(-0.606,4.27,n_traj)
+noise = 0           # Measurement noise coefficient
 dt = 5e-3           # Timestep length
 n_bins = 90
 
@@ -31,4 +32,4 @@ print(f"Statistical error data generator for diffusion coefficient values D = ",
 for diffusion in Ds:
     print(f"#########  Generating data for D = {diffusion}.  #########\n")
     gen_stat_survival_data(y, exp_lo, exp_hi, n_lengths, n_strands, n_traj, x0s,
-                      diffusion, dt, n_bins, basis, n_features, basis_name)
+                      diffusion, noise, dt, n_bins, basis, n_features, basis_name)

@@ -13,14 +13,18 @@ import matplotlib.pyplot as plt
 import matplotlib.pylab as pl
 from dataprep import *
 from stochastic_sindy import *
-import multiprocessing as mp
-import time
-from tqdm import tqdm
 from bases import *
 
+plt.rcParams.update({
+    "text.usetex": True,
+    "font.family": "serif",
+    "font.serif": ["Computer Modern"],
+    "pgf.texsystem": "pdflatex",
+    'pgf.rcfonts': False
+})
 #%% Loading the data
 
-suffix = f"_3-7(9n20s)"
+suffix = f"_3-7(9n20s)D1.000-standard"
 
 mask_table = np.loadtxt("stat_analysis/survmasks"+suffix+".csv", delimiter = ',')
 # mask_table = np.reshape(mask_table, (1,-1))
@@ -71,31 +75,37 @@ plt.errorbar(np.arange(1,n_features+1,1), order_mean, order_std, fmt = 'r.',
 
 plt.ylim([n_features+0.5,0.5])
 
-plt.savefig(f"stat_analysis/mean_survival.png", bbox_inches='tight')
+# plt.savefig(f"stat_analysis/mean_survival.png", bbox_inches='tight')
 
-#%%
+#%% Function-position frequency plot
 
 ns_idx = -1
 
 order_list = order_lists[ns_idx]
-
-masks = []
-for i in range(order_list.shape[0]):
-    masks.append(order_to_survival(order_list[i]))
-masks = np.array(masks)
-
-surv_hist = masks.sum(axis = 0)
-plt.imshow(surv_hist, cmap = 'Blues')
 
 surv_hist = np.zeros((n_features,n_features))
 
 for order in order_list:
     surv_hist[order.astype('int')-1, np.arange(0,n_features,1)] += 1
 
-plt.imshow(surv_hist, cmap = 'Blues')
-plt.xticks(np.arange(0,19,1))
-plt.yticks(np.arange(0,19,1))
-plt.grid(alpha = 0.3)
+surv_hist_norm = surv_hist/np.max(surv_hist, axis = 0)
+# surv_hist_norm = surv_hist
+surv_hist_norm[surv_hist == 0] = np.nan
+
+fig = plt.figure(figsize = (6,6), dpi = 200)
+
+cmap = pl.cm.Blues.copy()
+cmap.set_bad(alpha = 0)
+
+extent = [.5,n_features+.5,n_features+.5,.5]
+plt.imshow(surv_hist_norm, cmap = cmap, extent = extent)
+plt.xticks(np.arange(1,n_features+1,1))
+plt.yticks(np.arange(1,n_features+1,1))
+plt.grid(alpha = 0.4)
+plt.xlabel("Basis function index")
+plt.ylabel("Survival order")
+title = f"Function-position frequency, traj_len: {int(ns[ns_idx]):.1e}"
+# plt.title(title)
 
 
 #%% Accurate function frequency
@@ -134,7 +144,27 @@ plt.xlabel("Trajectory length")
 plt.title("Hamming distance between true and optimal function patterns")
 plt.grid()
 
-plt.savefig("stat_analysis/hamming_term_n.png", bbox_inches='tight')
+# plt.savefig("stat_analysis/hamming_term_n.png", bbox_inches='tight')
+
+#%% Hamming imshow
+
+ham_dist = np.count_nonzero(mask_lists != true_mask, axis = 2)
+ham_hist = np.zeros((np.max(ham_dist+1), n_lengths))
+for i in range(n_lengths):
+    for j in range(np.max(ham_dist)):
+        ham_hist[j,i] = np.sum(ham_dist[i] == j)
+ham_hist[ham_hist == 0] = np.nan
+
+
+cmap = pl.cm.Blues.copy()
+cmap.set_bad(alpha = 0)
+
+plt.imshow(ham_hist, cmap = cmap, origin = "lower")
+# ns, np.arange(0,np.max(ham_dist)+1,1)
+plt.xlabel("Trajectory length")
+# plt.xscale("log")
+plt.xticks(np.arange(0,9,2), [f"$10^{n}$" for n in np.arange(3,8,1)])
+plt.ylabel("Hamming distance")
 
 #%% Jaccard distances
 
@@ -153,7 +183,7 @@ plt.title("Jaccard distance between true and optimal function patterns")
 plt.grid()
 plt.ylim([0,1])
 
-plt.savefig("stat_analysis/jaccard_term_n.png", bbox_inches='tight')
+# plt.savefig("stat_analysis/jaccard_term_n.png", bbox_inches='tight')
 
 #%% Number of true and false functions in optimal solution
 
@@ -182,7 +212,7 @@ plt.grid()
 plt.axhline(y=4, color = 'grey', linestyle = '--')
 plt.axhline(y=0, color = 'grey', linestyle = '--')
 
-plt.savefig("stat_analysis/true_term_n.png", bbox_inches='tight')
+# plt.savefig("stat_analysis/true_term_n.png", bbox_inches='tight')
 
 #%%
 
@@ -211,4 +241,4 @@ matplotlib.colorbar.ColorbarBase(ax = ax[1], cmap = cmap, norm = norm, orientati
 ax[1].invert_yaxis()
 ax[1].set_ylabel("Trajectory length")
 
-plt.savefig("stat_analysis/corr_v_incorr.png", bbox_inches='tight')
+# plt.savefig("stat_analysis/corr_v_incorr.png", bbox_inches='tight')

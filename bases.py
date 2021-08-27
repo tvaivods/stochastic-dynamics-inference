@@ -75,13 +75,13 @@ standard_fns = [
     lambda x : x**6,
     lambda x : x**7,
     lambda x : x**8,
-    lambda x : np.sin(x),
+    lambda x : np.sin(x), #10
     lambda x : np.cos(x),
     lambda x : np.sin(2*x),
     lambda x : np.cos(2*x),
     lambda x : np.sin(4*x),
     lambda x : np.cos(4*x),
-    lambda x : np.exp(-2*(x-1)**2),
+    lambda x : np.exp(-2*(x-1)**2), #16
     lambda x : np.exp(-2*(x-3)**2),
     lambda x : np.log(x**2+0.01),
     lambda x : np.cos(3*x)*np.exp(-x**2),
